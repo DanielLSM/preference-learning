@@ -1,0 +1,4 @@
+learning:
+  epsilon: 0.99
+oracle:
+  randomness: 0.5
