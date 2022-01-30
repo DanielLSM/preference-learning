@@ -32,6 +32,3 @@ model.evaluate(x_test, y_test, verbose=2)
 probability_model = tf.keras.Sequential([model, tf.keras.layers.Softmax()])
 
 probability_model(x_test[:5])
-
-
-sudo apt-get install libcudnn8=8.1-1+cuda11.4
