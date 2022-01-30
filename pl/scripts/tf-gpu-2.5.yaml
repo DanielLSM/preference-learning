@@ -1,0 +1,24 @@
+name: tf-gpu-2.5
+
+channels:
+  - conda-forge
+  - nvidia
+  - defaults
+
+dependencies:
+  - cudatoolkit==11.1.1
+  - cudnn
+  - nccl
+  - pip
+  - pandas
+  - matplotlib
+  - python==3.8.5
+  - scikit-learn
+  - pip:
+     - networkx
+     - tqdm
+     - matplotlib
+     - pydot
+     - graphviz
+     - tensorflow>=2.5
+     - tensorflow-gpu

@@ -137,7 +137,7 @@ def train_value_function(observation_buffer, return_buffer):
 
 # Hyperparameters of the PPO algorithm
 steps_per_epoch = 4000
-epochs = 30
+epochs = 100
 gamma = 0.99
 clip_ratio = 0.2
 policy_learning_rate = 3e-4
@@ -150,10 +150,11 @@ hidden_sizes = (64, 64)
 
 # True if you want to render the environment
 render = False
+render_frequency_epoch = 10
 
 # Initialize the environment and get the dimensionality of the
 # observation space and the number of possible actions
-env = gym.make("CartPole-v0")
+env = gym.make("LunarLander-v2")
 observation_dimensions = env.observation_space.shape[0]
 num_actions = env.action_space.n
 
@@ -188,7 +189,7 @@ for epoch in range(epochs):
 
     # Iterate over the steps of each epoch
     for t in range(steps_per_epoch):
-        if render:
+        if render and epoch % render_frequency_epoch == 0:
             env.render()
 
         # Get the logits, action, and take one step in the environment
