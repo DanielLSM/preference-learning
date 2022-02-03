@@ -42,7 +42,7 @@ class HumanCritic:
 
     def _create_reward_model(self, input_obs):
         model = mlp(x=input_obs, sizes=list(self.SIZES))
-        output = layers.Dense(1)(model)
+        output = tf.squeeze(layers.Dense(1)(model))
         reward_model = keras.Model(inputs=input_obs, outputs=output)
         return reward_model
 
@@ -60,7 +60,11 @@ class HumanCritic:
             else:
                 pref_dist[:] = 0.5
             mini_batch_sizes = [len(o0), len(o1)]
-            print(o0)
+            # print(o0)
+            o0 = np.stack([i.tolist() for i in o0])
+            o1 = np.stack([i.tolist() for i in o1])
+
+            # print(o0)
             # print(o0, o1, pref_dist, mini_batch_sizes)
             # self.train_mini_batch(np.concatenate(o0, axis=0), np.concatenate(o1, axis=0), pref_dist, mini_batch_sizes)
             self.train_mini_batch(o0, o1, pref_dist, mini_batch_sizes)
@@ -73,12 +77,12 @@ class HumanCritic:
     @tf.function
     def train_mini_batch(self, o0, o1, pref_dist, batch_sizes):
         with tf.GradientTape() as tape:
-            tf.print(o0, output_stream=sys.stdout)
-            r1_mean_exp = tf.exp(tf.divide(tf.reduce_sum(self.reward_model(o0)), batch_sizes[0]))
-            r2_mean_exp = tf.exp(tf.divide(tf.reduce_sum(self.reward_model(o1)), batch_sizes[1]))
+            # tf.print(o0, output_stream=sys.stdout)
+            r1_mean_exp = tf.exp(tf.divide(tf.reduce_sum(self.reward_model(o0, training=True)), batch_sizes[0]))
+            r2_mean_exp = tf.exp(tf.divide(tf.reduce_sum(self.reward_model(o1, training=True)), batch_sizes[1]))
             pref_r1 = self.preference_calculation(r1_mean_exp, r2_mean_exp)
             pref_r2 = self.preference_calculation(r2_mean_exp, r1_mean_exp)
-            loss = -(pref_dist[0] * tf.log(pref_r1) + pref_dist[1] * tf.log(pref_r2))
+            loss = -(pref_dist[0] * tf.math.log(pref_r1) + pref_dist[1] * tf.math.log(pref_r2))
         reward_model_grads = tape.gradient(loss, self.reward_model.trainable_variables)
         self.optimizer.apply_gradients(zip(reward_model_grads, self.reward_model.trainable_variables))
         # return loss
@@ -232,6 +236,7 @@ def train_value_function(observation_buffer, return_buffer):
 
 
 # Human Critic
+ask_human = False
 trajectory_save_frequency = 1
 train_reward_model_freq = 1
 
@@ -329,6 +334,7 @@ for episode in range(num_episodes):
 
         # Store obs, act, rew, v_t, logp_pi_t
         trajectory.append([observation.copy(), observation_new.copy(), action, done])
+        reward = reward if not ask_human else human_critic.reward_model(observation).numpy()
         buffer.store(observation, action, reward, value_t, logprobability_t)
         # print(buffer.observation_buffer)
         if buffer.buffer_full():
@@ -344,10 +350,10 @@ for episode in range(num_episodes):
             episode_length_mean.append(episode_length)
             last_value = 0 if done else critic(observation.reshape(1, -1))
             buffer.finish_trajectory(last_value)
-            if episode % trajectory_save_frequency == 0:
+            if ask_human and episode % trajectory_save_frequency == 0:
                 human_critic.add_trajectory(None, None, episode_return, trajectory)
                 human_critic.ask_total_reward()
-            if episode % train_reward_model_freq == 0:
+            if ask_human and episode % train_reward_model_freq == 0:
                 human_critic.train_reward_model()
 
     if episode % log_means_frequency == 0:
