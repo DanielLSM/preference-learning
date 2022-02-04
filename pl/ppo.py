@@ -187,7 +187,7 @@ if __name__ == '__main__':
     # observation space and the number of possible actions
     env_name = "CartPole-v0"
     env = gym.make("CartPole-v0")
-    env = set_env_seed(env, 0)
+    env = set_env_seed(env, 1)
 
     observation_dimensions = env.observation_space.shape[0]
     num_actions = env.action_space.n

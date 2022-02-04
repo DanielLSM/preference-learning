@@ -46,7 +46,7 @@ class Environment(Process):
 
 
 # Multiprocessing
-num_workers = 1
+num_workers = 8
 
 # Human Critic
 ask_human = True
@@ -55,7 +55,7 @@ train_reward_model_freq = 1
 
 # Hyperparameters of the PPO algorithm
 num_episodes = 5000
-max_size_buffer = 4000
+max_size_buffer = int(4000 / num_workers)
 gamma = 0.99
 clip_ratio = 0.2
 policy_learning_rate = 3e-4
@@ -74,7 +74,7 @@ log_means_frequency = 100
 
 env_name = "CartPole-v0"
 env = gym.make("CartPole-v0")
-env = set_env_seed(env, 0)
+env = set_env_seed(env, 1)
 observation_dimensions = env.observation_space.shape[0]
 num_actions = env.action_space.n
 
@@ -123,7 +123,7 @@ while episode < num_episodes:
     # Get the logits, action, and take one step in the environment
     # observation = observation.reshape(1, -1)
     observations = np.reshape(observations_workers, [num_workers, observation_dimensions])
-    logits, actions = ppo_agent.sample_action(observations.reshape(1, -1))
+    logits, actions = ppo_agent.sample_action(observations)
     # import ipdb
     # ipdb.set_trace()
     # Get the value and log-probability of the action
