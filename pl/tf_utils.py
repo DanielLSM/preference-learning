@@ -9,6 +9,7 @@ print("TensorFlow version:", tf.__version__)
 def set_env_seed(env, seed):
     env.np_random = np.random.RandomState(seed)
     env.seed(seed)
+    tf.random.set_seed(seed)
     return env
 
 

@@ -4,7 +4,8 @@ from tensorflow import keras
 from tensorflow.keras import layers
 import scipy.signal
 
-from tf_utils import mlp
+from statistics import mean
+from tf_utils import mlp, set_env_seed
 
 
 class Buffer:
@@ -81,9 +82,8 @@ def logprobabilities(logits, a, num_actions):
 
 class PPO:
 
-    def __init__(self, observation_dimensions, hidden_sizes, num_actions, policy_learning_rate,
-                 value_function_learning_rate, clip_ratio, train_policy_iterations, train_value_iterations,
-                 target_kl) -> None:
+    def __init__(self, observation_dimensions, hidden_sizes, num_actions, policy_learning_rate, value_function_learning_rate, clip_ratio, train_policy_iterations,
+                 train_value_iterations, target_kl) -> None:
 
         # Initialize the self.actor and the self.critic as keras models
         observation_input = keras.Input(shape=(observation_dimensions, ), dtype=tf.float32)
@@ -115,9 +115,7 @@ class PPO:
     def train_policy(self, observation_buffer, action_buffer, logprobability_buffer, advantage_buffer):
 
         with tf.GradientTape() as tape:  # Record operations for automatic differentiation.
-            ratio = tf.exp(
-                logprobabilities(self.actor(observation_buffer), action_buffer, self.num_actions) -
-                logprobability_buffer)
+            ratio = tf.exp(logprobabilities(self.actor(observation_buffer), action_buffer, self.num_actions) - logprobability_buffer)
             min_advantage = tf.where(
                 advantage_buffer > 0,
                 (1 + self.clip_ratio) * advantage_buffer,
@@ -128,8 +126,7 @@ class PPO:
         policy_grads = tape.gradient(policy_loss, self.actor.trainable_variables)
         self.policy_optimizer.apply_gradients(zip(policy_grads, self.actor.trainable_variables))
 
-        kl = tf.reduce_mean(logprobability_buffer -
-                            logprobabilities(self.actor(observation_buffer), action_buffer, self.num_actions))
+        kl = tf.reduce_mean(logprobability_buffer - logprobabilities(self.actor(observation_buffer), action_buffer, self.num_actions))
         kl = tf.reduce_sum(kl)
         return kl
 
@@ -184,26 +181,30 @@ if __name__ == '__main__':
     # True if you want to render the environment
     render = False
     render_frequency_episode = 100
-    log_means_frequency = 50
+    log_means_frequency = 100
 
     # Initialize the environment and get the dimensionality of the
     # observation space and the number of possible actions
+    env_name = "CartPole-v0"
     env = gym.make("CartPole-v0")
+    env = set_env_seed(env, 0)
+
     observation_dimensions = env.observation_space.shape[0]
     num_actions = env.action_space.n
 
     buffer = Buffer(observation_dimensions, max_size_buffer)
 
-    ppo_agent = PPO(observation_dimensions, hidden_sizes, num_actions, policy_learning_rate,
-                    value_function_learning_rate, clip_ratio)
+    ppo_agent = PPO(observation_dimensions, hidden_sizes, num_actions, policy_learning_rate, value_function_learning_rate, clip_ratio, train_policy_iterations,
+                    train_value_iterations, target_kl)
 
     # Initialize the observation, episode return and episode length
-    observation, episode_return, episode_length = env.reset(), 0, 0
+    episode_return, episode_length = 0, 0
 
     # Iterate over the number of epochs
     for episode in range(num_episodes):
         # Initialize the sum of the returns, lengths and number of episodes for each epoch
         observation = env.reset()
+
         episode_return, episode_length = 0, 0
         if episode % log_means_frequency == 0:
             episode_return_mean, episode_length_mean = [], []
@@ -219,6 +220,8 @@ if __name__ == '__main__':
             # Get the logits, action, and take one step in the environment
             observation = observation.reshape(1, -1)
             logits, action = ppo_agent.sample_action(observation)
+            # import ipdb
+            # ipdb.set_trace()
             observation_new, reward, done, _ = env.step(action[0].numpy())
             episode_return += reward
             episode_length += 1
@@ -230,6 +233,11 @@ if __name__ == '__main__':
             # Store obs, act, rew, v_t, logp_pi_t
             trajectory.append([observation.copy(), observation_new.copy(), action, done])
             buffer.store(observation, action, reward, value_t, logprobability_t)
+            # import ipdb
+            # ipdb.set_trace()
+
+            # import ipdb
+            # ipdb.set_trace()
             # print(buffer.observation_buffer)
             if buffer.buffer_full():
                 # Get values from the buffer
@@ -240,8 +248,7 @@ if __name__ == '__main__':
                     return_buffer,
                     logprobability_buffer,
                 ) = buffer.get()
-                ppo_agent.train_ppo(observation_buffer, action_buffer, advantage_buffer, return_buffer,
-                                    logprobability_buffer)
+                ppo_agent.train_ppo(observation_buffer, action_buffer, advantage_buffer, return_buffer, logprobability_buffer)
 
             # Update the observation
             observation = observation_new
@@ -254,8 +261,8 @@ if __name__ == '__main__':
                 last_value = 0 if done else ppo_agent.critic(observation.reshape(1, -1))
                 buffer.finish_trajectory(last_value)
 
+        # import ipdb
+        # ipdb.set_trace()
         if episode % log_means_frequency == 0:
             # Print mean return and length for each epoch
-            print(
-                f" Episode: {episode + 1}. Mean Return: {sum(episode_return_mean)/max(len(episode_return_mean),1)}. Mean Length: {sum(episode_length_mean)/max(len(episode_length_mean),1)}"
-            )
+            print(f" Episode: {episode}. Return: {mean(episode_return_mean)}. Length: {mean(episode_length_mean)}")
