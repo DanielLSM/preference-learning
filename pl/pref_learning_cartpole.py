@@ -44,8 +44,8 @@ buffer = Buffer(observation_dimensions, max_size_buffer)
 human_critic = HumanCritic(obs_size=observation_dimensions, action_size=num_actions)
 
 # Initialize the actor and the critic as keras models
-ppo_agent = PPO(observation_dimensions, hidden_sizes, num_actions, policy_learning_rate, value_function_learning_rate,
-                clip_ratio, train_policy_iterations, train_value_iterations, target_kl)
+ppo_agent = PPO(observation_dimensions, hidden_sizes, num_actions, policy_learning_rate, value_function_learning_rate, clip_ratio, train_policy_iterations, train_value_iterations,
+                target_kl)
 
 # Initialize the observation, episode return and episode length
 observation, episode_return, episode_length = env.reset(), 0, 0
@@ -79,7 +79,9 @@ for episode in range(num_episodes):
 
         # Store obs, act, rew, v_t, logp_pi_t
         trajectory.append([observation.copy(), observation_new.copy(), action, done])
-        reward = reward if not ask_human else human_critic.reward_model(observation).numpy()
+        import ipdb
+        ipdb.set_trace()
+        reward = reward if not ask_human else human_critic.reward_model([observation]).numpy()
         buffer.store(observation, action, reward, value_t, logprobability_t)
         # print(buffer.observation_buffer)
         if buffer.buffer_full():
@@ -91,8 +93,7 @@ for episode in range(num_episodes):
                 return_buffer,
                 logprobability_buffer,
             ) = buffer.get()
-            ppo_agent.train_ppo(observation_buffer, action_buffer, advantage_buffer, return_buffer,
-                                logprobability_buffer)
+            ppo_agent.train_ppo(observation_buffer, action_buffer, advantage_buffer, return_buffer, logprobability_buffer)
 
         # Update the observation
         observation = observation_new
