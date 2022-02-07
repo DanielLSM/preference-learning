@@ -79,8 +79,6 @@ for episode in range(num_episodes):
 
         # Store obs, act, rew, v_t, logp_pi_t
         trajectory.append([observation.copy(), observation_new.copy(), action, done])
-        import ipdb
-        ipdb.set_trace()
         reward = reward if not ask_human else human_critic.reward_model([observation]).numpy()
         buffer.store(observation, action, reward, value_t, logprobability_t)
         # print(buffer.observation_buffer)
